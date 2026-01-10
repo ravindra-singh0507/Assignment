@@ -1,4 +1,4 @@
-**Form Builder — React (assign2)**
+**Form Builder — React **
 
 **Project:** A lightweight drag-and-drop form builder and renderer built with React, and Vite. It provides a canvas to compose forms using a toolbox of fields, a properties editor, sortable fields, and a renderer for running the form (including repeaters).
 
