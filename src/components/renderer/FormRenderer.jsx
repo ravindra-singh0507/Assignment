@@ -12,15 +12,74 @@ export function FormRenderer({ previewMode = false }) {
     // Only render enabled fields
     const activeFields = fields.filter(f => f.enabled);
 
-    const onSubmit = (data) => {
+    const onSubmit = async (data) => {
         if (previewMode) {
             alert("This is a preview. Form valid!");
             console.log(data);
             return;
         }
-        addSubmission(data);
-        alert("Application Submitted Successfully!");
-        reset();
+
+        // Transform data: ID -> Label, and flatten single-element arrays
+        const transformedData = {};
+
+        // Helper to process specific fields or structured data
+        activeFields.forEach(field => {
+            const value = data[field.id];
+
+            // Skip undefined values
+            if (value === undefined || value === null || value === '') return;
+
+            let finalValue = value;
+
+            // Flatten single-element arrays for readability (common with checkbox/select)
+            if (Array.isArray(value) && value.length === 1) {
+                finalValue = value[0];
+            } else if (Array.isArray(value) && value.length > 1) {
+                // keeps it as array for multi-select
+                finalValue = value;
+            }
+
+            // Handle Repeater Fields specifically
+            if (field.type === 'repeater' && Array.isArray(value) && field.subFields) {
+                finalValue = value.map(item => {
+                    const itemObj = {};
+                    field.subFields.forEach(sub => {
+                        if (item[sub.id]) {
+                            itemObj[sub.label] = item[sub.id];
+                        }
+                    });
+                    return itemObj;
+                });
+            }
+
+            transformedData[field.label] = finalValue;
+        });
+
+        try {
+            const response = await fetch('http://localhost:5000/api/forms/default/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data: transformedData }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Submission failed');
+            }
+
+            const result = await response.json();
+            console.log('Submission successful:', result);
+
+            addSubmission(transformedData);
+
+            alert("Application Submitted Successfully!");
+            reset();
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            alert(`Submission Error: ${error.message}`);
+        }
     };
 
     if (activeFields.length === 0) {
